@@ -40,14 +40,8 @@ Function BeginQTE()
 intrusiveErrors = StorageUtil.GetIntValue(None, "QTEFW_Intrusive_Errors")
 
 if(active)
-	If(intrusiveErrors > 0)
-		Debug.MessageBox("Tried to start a QTE while one was already running.")
-	Else
-		Debug.Trace("QTEFW: Tried to start a QTE while one was already running.")
-	EndIf
+	SendErrorMessage("QTEFW: Tried to start a QTE while one was already running.")
 EndIf	
-
-	
 
 	;Check for Overrides, pluck the valid ones, if there is no override use the default
 	style = StorageUtil.PluckStringValue(None, "QTEFW_Override_Style", StorageUtil.GetStringValue(None, "QTEFW_Default_Style"))
@@ -72,21 +66,11 @@ EndIf
 	int invalidOverrides = StorageUtil.ClearAllObjPrefix(none, "QTEFW_Override")
 
 	if (invalidOverrides > 0)
-		if (IntrusiveErrors > 0)
-			Debug.MessageBox("QTEFW: " +invalidOverrides+ " invalid override(s) received. Check syntax.")
-		Else
-			Debug.Trace("QTEFW: " +invalidOverrides+ " invalid override(s) received. Check syntax.")
-		EndIf
+		SendErrorMessage("QTEFW: " +invalidOverrides+ " invalid override(s) received. Check syntax.")
 	EndIf
 
 	if (minCorrect < 1 && maxFailures == -1)
-
-		if (IntrusiveErrors > 1)
-			Debug.MessageBox("Attempted to start a QTE event with no max failure or min success conditions. Terminating request.")
-		Else
-			Debug.Trace("QTEFW: Attempted to start a QTE event with no max failure or min success conditions. Terminating request.")
-		EndIf
-		
+		SendErrorMessage("QTEFW: Attempted to start a QTE event with no max failure or min success conditions. Terminating request.")
 	EndIf
 
 	ForwardKey = Input.GetMappedKey("Forward")
@@ -359,6 +343,14 @@ int Function  DirectionToKeyCode(String direction, Message directionMessage)
 			Debug.MessageBox("Fallthrough in DirectionToKeyCode")
 			return ForwardKey
 		EndIf
+EndFunction
+
+Function SendErrorMessage(string Error)
+	If(intrusiveErrors > 0)
+		Debug.MessageBox(Error)
+	Else
+		Debug.Trace(Error)
+	EndIf
 EndFunction
 
 Function CleanUp()
