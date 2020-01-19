@@ -161,7 +161,6 @@ int handle
 			if(style == "single")
 				Message.ResetHelpMessage(CorrectKeysPressed - 1)
 				Message.ResetHelpMessage(CorrectKeysPressed)
-				Debug.MessageBox("Correct keys pressed = " +CorrectKeysPressed)
 				SingleStyleMessages[CorrectKeysPressed].ShowAsHelpMessage(CorrectKeysPressed, 2 , 2, 1)
 			EndIf
 
