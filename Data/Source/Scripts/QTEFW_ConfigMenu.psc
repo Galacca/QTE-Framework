@@ -303,7 +303,7 @@ state QTE_TEST
 		RegisterForModEvent(myEventOnCorrect, "myCallbackOnCorrect")
 		RegisterForModEvent(myEventOnFailure, "myCallbackOnFailure")
 		RegisterForModEvent(myEventOnSuccessEnd, "myCallbackOnSuccessEnd")
-		RegisterForModEvent(myEventOnTotalFailureEnd, "myCallBackOnSuccessEnd")
+		RegisterForModEvent(myEventOnTotalFailureEnd, "myCallBackOnTotalFailureEnd")
 
 		StorageUtil.SetStringValue(None, "QTEFW_Override_modEventOnCorrect", myEventOnCorrect)
 		StorageUtil.SetStringValue(None, "QTEFW_Override_modEventOnFailure", myEventOnFailure)
