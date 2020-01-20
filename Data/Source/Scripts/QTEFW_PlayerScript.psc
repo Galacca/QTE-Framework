@@ -3,9 +3,14 @@ Scriptname QTEFW_PlayerScript extends ReferenceAlias
 Event OnInit()
 	RegisterForModEvent("QTEWF_useDefaults", "QTE_Default")
 
+	;String lists
+	StorageUtil.StringListAdd(none, "QTEFW_Default_KeysToRegister", "Forward", false)
+	StorageUtil.StringListAdd(none, "QTEFW_Default_KeysToRegister",  "Back", false)
+	StorageUtil.StringListAdd(none, "QTEFW_Default_KeysToRegister", "Strafe Left", false)
+	StorageUtil.StringListAdd(none, "QTEFW_Default_KeysToRegister", "Strafe Right", false)
+
 	;Strings
 	StorageUtil.SetStringValue(None, "QTEFW_Default_Style", "Single")
-	StorageUtil.SetStringValue(None, "QTEFW_Default_KeysToRegister", "Movement")
 	StorageUtil.SetStringValue(None, "QTEFW_Default_FailureMode", "Total Plus")
 			
 	;Floats
@@ -35,7 +40,8 @@ EndEvent
 
 Event QTE_Default()
 
-	  (QTEFW_Quest as QTEFW_QTEScript).BeginQTE()
+	  (QTEFW_Quest as QTEFW_QTEScript).InitializeQTE()
+
 EndEvent
 
 

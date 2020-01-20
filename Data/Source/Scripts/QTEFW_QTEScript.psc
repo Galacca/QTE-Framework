@@ -4,7 +4,7 @@ ObjectReference[] Property QTEInputArray  Auto
 Message[] Property DirectionMessages  Auto  ;0 forward, 1 backward, 2 left, 3 right
 Quest Property QTEFW_Quest  Auto  
 Int[] Property QTEKeyCodes  Auto  
-Message[] Property SingleStyleMessages  Auto  
+Message[] SingleStyleMessages
 
 string style
 string failureMode
@@ -12,6 +12,7 @@ string modEventOnCorrect
 string modEventOnFailure
 string modEventOnSuccessEnd
 string modEventOnTotalFailureEnd
+string keysToRegister
 
 float inputTimeInitial
 float delayBeforeNext
@@ -24,19 +25,18 @@ int minCorrect
 int failureIncrease
 int timesFailed = 0
 int intrusiveErrors
-int QTEsReady
 Int CorrectKeysPressed = 0
 Int ForwardKey
 Int BackwardKey
 Int LeftKey
 Int RightKey
+Int KeysToRegisterLength
 
 bool active = false
 bool Initial = True
 Actor Property Player  Auto 
 
-Function BeginQTE()
-
+Function InitializeQTE()
 intrusiveErrors = StorageUtil.GetIntValue(None, "QTEFW_Intrusive_Errors")
 
 if(active)
@@ -56,6 +56,9 @@ EndIf
 	maxFailures = StorageUtil.PluckIntValue(None, "QTEFW_Override_MaxFailures", StorageUtil.GetIntValue(None, "QTEFW_Default_MaxFailures"))
 	minCorrect = StorageUtil.PluckIntValue(None, "QTEFW_Override_MinCorrect", StorageUtil.GetIntValue(None, "QTEFW_Default_MinCorrect"))
 	failureIncrease = StorageUtil.PluckIntValue(None, "QTEFW_Override_FailureIncrease", StorageUtil.GetIntValue(None, "QTEFW_Default_FailureIncrease"))
+
+	;this is prefixed differently even tho it is an override on purpose
+	int keysToRegisterOverrideLength = StorageUtil.StringListCount(none, "QTEFW_RegisterOverride_KeysToRegister")
 	
 	modEventOnCorrect = StorageUtil.PluckStringValue(None, "QTEFW_Override_modEventOnCorrect", "none")
 	modEventOnFailure = StorageUtil.PluckStringValue(None, "QTEFW_Override_modEventOnFailure", "none")
@@ -73,13 +76,20 @@ EndIf
 		SendErrorMessage("QTEFW: Attempted to start a QTE event with no max failure or min success conditions. Terminating request.")
 	EndIf
 
-	ForwardKey = Input.GetMappedKey("Forward")
-	BackwardKey = Input.GetMappedKey("Back")
-	LeftKey = Input.GetMappedKey("Strafe Left")
-	RightKey = Input.GetMappedKey("Strafe Right")
+	;Check if there is an override request for available inputs
+	if(keysToRegisterOverrideLength > 0)
+		keysToRegister = "QTEFW_RegisterOverride_KeysToOverride"
+	Else
+		keysToRegister = "QTEFW_Default_KeysToRegister"
+	EndIf
+
+keysToRegisterLength = StorageUtil.StringListCount(none, keysToRegister)
+
+QTEKeyCodes = new int[9]
+SingleStyleMessages = new message[9]
 
 if(!active)
-	SetUpQTE()
+	SetUpQTE(minCorrect)
 EndIf
 	
 EndFunction
@@ -92,44 +102,72 @@ EndFunction
 ;and help message is the only way to get the graphical buttons to appear (until I learn flash...)
 ;I wish I wouldnt have to resort in two arrays, but since there are no lists I have to improvise.
 
-Function SetUpQTE()
-	active = true
-
-	SingleStyleMessages = new message [9]
-	QTEKeyCodes = new int [9]
-	QTEsReady = 0
+Function SetUpQTE(Int NumberToSet)
+	
+	Int QTEsReady = 0
 	String BlankString
 	Message BlankMessage
 
-		if(style == "sequence")
-			While (minCorrect > QTEsReady)
+		if(style == "sequence")	
+			While (NumberToSet > QTEsReady)
 				QTEInputArray[QTEsReady].GetBaseObject().SetName(RandomDirection())
 				QTEKeyCodes[QTEsReady] = DirectionToKeyCode(QTEInputArray[QTEsReady].GetBaseObject().GetName(), BlankMessage)
-				QTEsReady += 1
+				QTEsReady = QTEsReady+1
 			EndWhile	
 		Else
-			While (minCorrect > QTEsReady)
-				SingleStyleMessages[QTEsReady] = DirectionMessages[Utility.RandomInt(0, 3)]
+			While (NumberToSet > QTEsReady)
+				SingleStyleMessages[QTEsReady] = RandomMessage()
 				QTEKeyCodes[QTEsReady] = DirectionToKeyCode(BlankString, SingleStyleMessages[QTEsReady])
-				QTEsReady += 1
+				QTEsReady = QTEsReady+1
 			EndWhile	
 		EndIf
-	
-	DisplayQTE()
+	BeginQTE(NumberToSet)
 EndFunction
 
-;Function that handles the visual feedback whenever a new QTE starts
-Function DisplayQTE()
+Function BeginQTE(Int NumberToSet)
+		
 
-	If (Initial)
-		Utility.Wait(2.0) ;Changing this to a MCM settable global later
-	Endif
+	;If this is the first time the player has been hit (not sent here by messed up QTE), pause everything for 2 seconds to give the player some time to figure out what just happened
+
+		If (Initial)
+			Utility.Wait(2.0)
+		Endif
 
 	RegisterForKey(ForwardKey)
 	RegisterForKey(BackwardKey)
 	RegisterForKey(LeftKey)
 	RegisterForKey(RightKey)
 	;RegisterForKey(JournalKey) // This is for later
+	
+		if(style == "sequence")
+			SetObjectiveDisplayed(NumberToSet, abForce = true)
+			;Since I cant control how fast this pops up we have to wait a bit here before registering for the timeout event
+			Utility.Wait(1.0)
+		Else
+			Message.ResetHelpMessage("Style1InitialQTE")
+			SingleStyleMessages[0].ShowAsHelpMessage("Style1InitialQTE", 2 ,3, 1)
+		Endif
+			
+		If (Initial && inputTimeInitial > 0.00)
+			RegisterForSingleUpdate(inputTimeInitial)
+		ElseIf( inputTimeReset > 0.00)
+			RegisterForSingleUpdate(inputTimeReset)
+		EndIf
+
+	initial = False
+EndFunction
+
+;Function that handles the visual feedback whenever a new QTE starts
+Function DisplayQTE()
+int i
+	If (Initial)
+		Utility.Wait(2.0) ;Changing this to a MCM settable global later
+	Endif
+	
+	while (keysToRegisterLength > i)
+		RegisterForKey(Input.GetMappedKey(StorageUtil.StringListGet(none, keysToRegister, i)))
+		i += 1
+	endWhile
 	
 		if(style == "sequence")
 			SetObjectiveDisplayed(minCorrect, abForce = true)
@@ -150,18 +188,54 @@ Function DisplayQTE()
 Initial = False
 EndFunction
 
+string Function RandomDirection()
+	string direction
+	int random = Utility.RandomInt(1, 4)
+		If (random == 1)
+			direction = "forward"
+		ElseIf (random == 2)
+			direction = "backward"
+		ElseIf (random == 3)
+			direction = "left"
+		Else
+			direction = "right"
+		EndIf
+	Return direction	
+EndFunction
+
+;Function that randomizes the order of QTE inputs (Style Single)
+message Function RandomMessage()
+	message messageToReturn
+	int	random = Utility.RandomInt(1,4)
+	
+		If (random == 1)
+			messageToReturn = ForwardMessage
+		ElseIf (random == 2)
+			messageToReturn = BackwardMessage
+		ElseIf (random == 3)
+			messageToReturn = LeftMessage
+		ElseIf (random == 4)
+			messageToReturn = RightMessage
+		Else
+			Debug.Notification("Fallthrough RandomMessage()")
+		EndIf
+
+	Return messageToReturn
+EndFunction
+
 Event OnKeyDown(Int KeyCode)
 
 int handle
 	
 	If (KeyCode == QTEKeyCodes[CorrectKeysPressed])
-		CorrectKeysPressed = CorrectKeysPressed +1
+		CorrectKeysPressed += 1
 		
 			;handle displaying the next input requested in single style
 			if(style == "single")
-				Message.ResetHelpMessage(CorrectKeysPressed - 1)
-				Message.ResetHelpMessage(CorrectKeysPressed)
-				SingleStyleMessages[CorrectKeysPressed].ShowAsHelpMessage(CorrectKeysPressed, 2 , 2, 1)
+					Message.ResetHelpMessage(CorrectKeysPressed - 1)
+					Message.ResetHelpMessage(CorrectKeysPressed)
+					SingleStyleMessages[CorrectKeysPressed].ShowAsHelpMessage(CorrectKeysPressed, 2 , 2, 1)
+				
 			EndIf
 
 
@@ -217,15 +291,19 @@ EndEvent
 
 Function PlayerFailure(string failureReason)
 	int handle
+	int i
 	timesFailed = timesFailed + 1
 
-	
-	;Unregister everything so the player cant double/triple/quadruple screw up and confuse the script.
 	UnregisterForUpdate()
 	UnregisterForKey(ForwardKey)
 	UnregisterForKey(BackwardKey)
 	UnregisterForKey(LeftKey)
 	UnregisterForKey(RightKey)
+	
+	;while (keysToRegisterLength > i)
+	;	UnregisterForKey(Input.GetMappedKey(StorageUtil.StringListGet(none, keysToRegister, i)))
+	;	i += 1
+	;endWhile
 
 	if (timesFailed >= maxFailures && maxFailures > -1)
 
@@ -282,66 +360,27 @@ Function PlayerFailure(string failureReason)
 		if(Player.IsDead())
 			CleanUp()
 		Else
-			SetUpQTE()
+			SetUpQTE(minCorrect)
 		EndIf
 	EndIf
 
 EndFunction
 
-;Function that renames the barrels to random directions (Style Sequence)
-string Function RandomDirection()
-	string direction
-	int random = Utility.RandomInt(1, 4)
-		If (random == 1)
-			direction = "forward"
-		ElseIf (random == 2)
-			direction = "backward"
-		ElseIf (random == 3)
-			direction = "left"
-		Else
-			direction = "right"
-		EndIf
-	Return direction	
-EndFunction
-
-;DECREPIT, just randomize the array index.
-;This was from before when the directional messages were not in an array
-;Function that randomizes the order of QTE inputs (Style Single)
-message Function RandomMessage()
-	message messageToReturn
-	int	random = Utility.RandomInt(0,3)
-	
-		If (random == 0)
-			messageToReturn = DirectionMessages[0]
-		ElseIf (random == 1)
-			messageToReturn = DirectionMessages[1]
-		ElseIf (random == 2)
-			messageToReturn = DirectionMessages[2]
-		Else
-			messageToReturn =  DirectionMessages[3]
-		EndIf
-
-	Return messageToReturn
-EndFunction
-
-;Takes the name of a barrel or a directional message. Returns the corresponding keycode regardless of player keybindings.
-;Does not work with VR im pretty sure
-
+;Function that takes a renamed barrel or a message and returns the corresponding keycode. Used by both QTE styles.
 int Function  DirectionToKeyCode(String direction, Message directionMessage)
 	int KeyCodeToReturn
-		if (direction == "forward" || directionMessage == DirectionMessages[0])
-			return ForwardKey
-		ElseIf(direction == "backward" || directionMessage == DirectionMessages[1])
-			return BackwardKey
-		ElseIf(direction == "left" || directionMessage == DirectionMessages[2])
-			return LeftKey
-		ElseIf(direction == "right" || directionMessage == DirectionMessages[3])
-			return RightKey
+		if (direction == "forward" || directionMessage == ForwardMessage)
+			KeyCodeToReturn = ForwardKey
+		ElseIf(direction == "backward" || directionMessage == BackwardMessage)
+			KeyCodeToReturn = BackwardKey
+		ElseIf(direction == "left" || directionMessage == LeftMessage)
+			KeyCodeToReturn = LeftKey
+		ElseIf(direction == "right" || directionMessage == RightMessage)
+			KeyCodeToReturn = RightKey
 		Else
-			;Memory of a time when I got bamboozled by this thing randoming right eight times in a row and I thought it was bugged
-			Debug.MessageBox("Fallthrough in DirectionToKeyCode")
-			return ForwardKey
+			Debug.Notification("Fallthrough DirectionToKeyCode()")
 		EndIf
+	Return KeyCodeToReturn			
 EndFunction
 
 Function SendErrorMessage(string Error)
@@ -367,6 +406,7 @@ Function CleanUp()
 	
 	;Just in case the calling script tried to override something during a modEvent.
 	StorageUtil.ClearAllObjPrefix(none, "QTEFW_Override")
+	StorageUtil.ClearAllObjPrefix(none, "QTEFW_RegisterOverride")
 
 	active = false
 	
@@ -375,3 +415,11 @@ EndFunction
 Event OnUpdate()
 	PlayerFailure("outOfTime")	
 EndEvent
+
+Message Property ForwardMessage  Auto  
+
+Message Property BackwardMessage  Auto  
+
+Message Property LeftMessage  Auto  
+
+Message Property RightMessage  Auto  

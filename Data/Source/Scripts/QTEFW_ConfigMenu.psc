@@ -310,10 +310,7 @@ state QTE_TEST
 		StorageUtil.SetStringValue(None, "QTEFW_Override_modEventOnSuccessEnd", myEventOnSuccessEnd)
 		StorageUtil.SetStringValue(None, "QTEFW_Override_modEventOnTotalFailureEnd", myEventOnTotalFailureEnd)
 
-		int handle = ModEvent.Create("QTEWF_useDefaults")
-			if (handle)
-				ModEvent.Send(handle)
-			EndIf
+		PlayerRef.EquipItem(TestPotion)
    	endEvent
 endState
 
@@ -321,14 +318,17 @@ Event myCallBackOnCorrect(int Correct)
 	Debug.Notification(Correct + " correct!")
 EndEvent	
 
-Event myEventOnFailure(string Reason, int Failures)
-	Debug.Notification(Failures + " failures! Reason: " +Reason)
+Event myCallBackOnFailure(string Reason, int Failures)
+	Debug.MessageBox(Failures + " failures! Reason: " +Reason)
 EndEvent
 
-Event myEventOnSuccessEnd()
-	Debug.Notification("It's over! Good job!")
+Event myCallBackOnSuccessEnd()
+	Debug.MessageBox("It's over! Good job!")
 EndEvent
 
-Event myEventOnTotalFailureEnd()
-	Debug.Notification("It's over! You messed up too many times!")
+Event myCallbackOnTotalFailureEnd()
+	Debug.MessageBox("It's over! You messed up too many times!")
 EndEvent
+Potion Property TestPotion  Auto  
+
+Actor Property PlayerRef  Auto  
